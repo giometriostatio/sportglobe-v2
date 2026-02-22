@@ -15,3 +15,4 @@
 - Renders on an interactive 3D globe
 - Auto-refreshes every 60 seconds
 - Falls back to today's schedule if no live games
+
