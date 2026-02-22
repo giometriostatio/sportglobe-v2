@@ -631,7 +631,7 @@ async function fetchAllLive() {
   document.getElementById('statusBar').onclick = () => fetchAllLive();
 }
 
-renderFilters(); fetchAllLive(); setInterval(fetchAllLive, 60000);
+renderFilters(); fetchAllLive(); setInterval(fetchAllLive, 300000); // refresh every 5 min (matches server cache)
 </script>
 </body>
 </html>
