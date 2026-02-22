@@ -585,33 +585,50 @@ function renderFilters() {
 function goTo(lat,lng,z){ map.flyTo([lat,lng],z,{duration:1.5, easeLinearity:0.25}); }
 function resetView(){ map.flyTo([20,0],2,{duration:1.5, easeLinearity:0.25}); }
 
-async function fetchSport(sport) { try { const r=await fetch(`/api/sports?sport=${sport}`); if(!r.ok) return []; return (await r.json()).response||[]; } catch{return[];} }
+async function fetchSport(sport) {
+  try {
+    const r = await fetch(`/api/sports?sport=${sport}`);
+    if (!r.ok) { console.warn(`API ${sport}: HTTP ${r.status}`); return []; }
+    const j = await r.json();
+    return j.response || [];
+  } catch(err) {
+    console.warn(`API ${sport} failed:`, err.message);
+    return [];
+  }
+}
 
 async function fetchAllLive() {
   document.getElementById('statusBar').textContent = 'Fetching live data...';
-  const [fb,bb,hk,bs] = await Promise.all([fetchSport('football'),fetchSport('basketball'),fetchSport('hockey'),fetchSport('baseball')]);
-  fetchCount += 4;
-  let events = [...parseFootball(fb),...parseBasketball(bb),...parseHockey(hk),...parseBaseball(bs)];
-  if (!events.some(e=>e.status==='LIVE'&&e.sport==='soccer')) {
-    const ft2 = await fetchSport('football_today'); fetchCount++;
-    events = [...parseFootball(ft2),...parseBasketball(bb),...parseHockey(hk),...parseBaseball(bs)];
+  try {
+    const [fb,bb,hk,bs] = await Promise.all([fetchSport('football'),fetchSport('basketball'),fetchSport('hockey'),fetchSport('baseball')]);
+    fetchCount += 4;
+    let events = [...parseFootball(fb),...parseBasketball(bb),...parseHockey(hk),...parseBaseball(bs)];
+    if (!events.some(e=>e.status==='LIVE'&&e.sport==='soccer')) {
+      const ft2 = await fetchSport('football_today'); fetchCount++;
+      events = [...parseFootball(ft2),...parseBasketball(bb),...parseHockey(hk),...parseBaseball(bs)];
+    }
+    SPORTS = events;
+    
+    // Debug: log geocoding results
+    let exact=0, fallback=0;
+    events.forEach(e => {
+      if (TEAM_CITY[e.home]) exact++;
+      else fallback++;
+    });
+    console.log(`Geocoding: ${exact} exact, ${fallback} fallback, ${events.length} total`);
+    const fallbackTeams = events.filter(e => !TEAM_CITY[e.home]).slice(0,10);
+    console.log('Sample fallback teams:', fallbackTeams.map(e => `${e.home} → [${e.lat.toFixed(2)},${e.lng.toFixed(2)}]`));
+    
+    updateLiveCount(); updateTicker(); renderMarkers();
+    const live=events.filter(e=>e.status==='LIVE').length, up=events.filter(e=>e.status==='UPCOMING').length;
+    document.getElementById('statusBar').textContent = events.length === 0
+      ? 'No events loaded — tap to retry'
+      : `${live} live · ${up} upcoming · ${exact}/${fallback} geo`;
+  } catch(err) {
+    console.error('fetchAllLive error:', err);
+    document.getElementById('statusBar').textContent = `Error: ${err.message} — tap to retry`;
   }
-  SPORTS = events;
-  
-  // Debug: log geocoding results
-  let exact=0, fallback=0;
-  events.forEach(e => {
-    if (TEAM_CITY[e.home]) exact++;
-    else fallback++;
-  });
-  console.log(`Geocoding: ${exact} exact, ${fallback} fallback, ${events.length} total`);
-  // Log some fallback teams
-  const fallbackTeams = events.filter(e => !TEAM_CITY[e.home]).slice(0,10);
-  console.log('Sample fallback teams:', fallbackTeams.map(e => `${e.home} → [${e.lat.toFixed(2)},${e.lng.toFixed(2)}]`));
-  
-  updateLiveCount(); updateTicker(); renderMarkers();
-  const live=events.filter(e=>e.status==='LIVE').length, up=events.filter(e=>e.status==='UPCOMING').length;
-  document.getElementById('statusBar').textContent = `${live} live · ${up} upcoming · ${exact} exact/${fallback} fallback`;
+  document.getElementById('statusBar').onclick = () => fetchAllLive();
 }
 
 renderFilters(); fetchAllLive(); setInterval(fetchAllLive, 60000);
