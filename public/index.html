@@ -487,7 +487,12 @@ const map = L.map('map', {
   // Disable tap for smoother mobile
   tap: false,
 });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_noannotation/{z}/{x}/{y}{r}.png', { subdomains:'abcd', maxZoom:19 }).addTo(map);
+// Dark map tiles - CartoDB dark_all (no API key needed, free)
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  subdomains: 'abcd',
+  maxZoom: 19,
+  attribution: ''
+}).addTo(map);
 let markersLayer = L.layerGroup().addTo(map);
 
 function createIcon(e) {
