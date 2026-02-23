@@ -5,20 +5,21 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
-  
-  const { sport } = req.query;
-  
-  const today = new Date().toISOString().split('T')[0];
+
+  const { sport, date } = req.query;
+
+  // Use provided date or default to today (YYYY-MM-DD)
+  const dateStr = date || new Date().toISOString().split('T')[0];
   const endpoints = {
     football: 'https://v3.football.api-sports.io/fixtures?live=all',
-    basketball: `https://v1.basketball.api-sports.io/games?date=${today}`,
-    hockey: `https://v1.hockey.api-sports.io/games?date=${today}`,
-    baseball: `https://v1.baseball.api-sports.io/games?date=${today}`,
-    rugby: `https://v1.rugby.api-sports.io/games?date=${today}`,
-    nfl: `https://v1.american-football.api-sports.io/games?date=${today}`,
-    mma: `https://v1.mma.api-sports.io/fights?date=${today}`,
-    f1: `https://v1.formula-1.api-sports.io/races?date=${today}`,
-    football_today: `https://v3.football.api-sports.io/fixtures?date=${today}`,
+    basketball: `https://v1.basketball.api-sports.io/games?date=${dateStr}`,
+    hockey: `https://v1.hockey.api-sports.io/games?date=${dateStr}`,
+    baseball: `https://v1.baseball.api-sports.io/games?date=${dateStr}`,
+    rugby: `https://v1.rugby.api-sports.io/games?date=${dateStr}`,
+    nfl: `https://v1.american-football.api-sports.io/games?date=${dateStr}`,
+    mma: `https://v1.mma.api-sports.io/fights?date=${dateStr}`,
+    f1: `https://v1.formula-1.api-sports.io/races?date=${dateStr}`,
+    football_today: `https://v3.football.api-sports.io/fixtures?date=${dateStr}`,
   };
 
   const url = endpoints[sport];
@@ -27,8 +28,8 @@ export default async function handler(req, res) {
   const apiKey = process.env.API_SPORTS_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
-  // Check cache
-  const cacheKey = sport;
+  // Check cache (keyed by sport + date)
+  const cacheKey = `${sport}:${dateStr}`;
   const cached = cache[cacheKey];
   if (cached && (Date.now() - cached.time < CACHE_TTL)) {
     res.setHeader('X-Cache', 'HIT');
@@ -41,7 +42,7 @@ export default async function handler(req, res) {
       headers: { 'x-apisports-key': apiKey }
     });
     const data = await response.json();
-    
+
     // Check if rate limited
     if (data.errors && data.errors.requests) {
       // If we have stale cache, serve it instead of nothing
@@ -51,10 +52,10 @@ export default async function handler(req, res) {
       }
       return res.status(429).json(data);
     }
-    
+
     // Store in cache
     cache[cacheKey] = { data, time: Date.now() };
-    
+
     res.setHeader('X-Cache', 'MISS');
     res.setHeader('X-RateLimit-Remaining', response.headers.get('x-ratelimit-requests-remaining') || '?');
     res.status(200).json(data);
