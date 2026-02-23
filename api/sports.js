@@ -15,6 +15,9 @@ export default async function handler(req, res) {
     hockey: `https://v1.hockey.api-sports.io/games?date=${today}`,
     baseball: `https://v1.baseball.api-sports.io/games?date=${today}`,
     rugby: `https://v1.rugby.api-sports.io/games?date=${today}`,
+    nfl: `https://v1.american-football.api-sports.io/games?date=${today}`,
+    mma: `https://v1.mma.api-sports.io/fights?date=${today}`,
+    f1: `https://v1.formula-1.api-sports.io/races?date=${today}`,
     football_today: `https://v3.football.api-sports.io/fixtures?date=${today}`,
   };
 
