@@ -22,11 +22,20 @@ export default async function handler(req, res) {
     football_today: `https://v3.football.api-sports.io/fixtures?date=${dateStr}`,
   };
 
-  const url = endpoints[sport];
+  // BallDontLie API endpoints
+  const bdlEndpoints = {
+    bdl_nba: `https://api.balldontlie.io/v1/games?dates[]=${dateStr}`,
+    bdl_mlb: `https://api.balldontlie.io/mlb/v1/games?dates[]=${dateStr}`,
+  };
+
+  const isBDL = sport in bdlEndpoints;
+  const url = isBDL ? bdlEndpoints[sport] : endpoints[sport];
   if (!url) return res.status(400).json({ error: 'Invalid sport parameter' });
 
-  const apiKey = process.env.API_SPORTS_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
+  if (!isBDL) {
+    const apiKey = process.env.API_SPORTS_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
+  }
 
   // Check cache (keyed by sport + date)
   const cacheKey = `${sport}:${dateStr}`;
@@ -38,13 +47,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(url, {
-      headers: { 'x-apisports-key': apiKey }
-    });
+    const headers = isBDL
+      ? { 'Authorization': process.env.BALLDONTLIE_KEY }
+      : { 'x-apisports-key': process.env.API_SPORTS_KEY };
+
+    const response = await fetch(url, { headers });
     const data = await response.json();
 
-    // Check if rate limited
-    if (data.errors && data.errors.requests) {
+    // Check if rate limited (API-Sports specific)
+    if (!isBDL && data.errors && data.errors.requests) {
       // If we have stale cache, serve it instead of nothing
       if (cached) {
         res.setHeader('X-Cache', 'STALE');
@@ -53,12 +64,19 @@ export default async function handler(req, res) {
       return res.status(429).json(data);
     }
 
+    // Normalize BDL response to match expected format: { data: [...] }
+    // BDL returns { data: [...] } already, pass it through
+    // For API-Sports, the format is { response: [...] }
+    const normalized = isBDL ? { response: data.data || [] } : data;
+
     // Store in cache
-    cache[cacheKey] = { data, time: Date.now() };
+    cache[cacheKey] = { data: normalized, time: Date.now() };
 
     res.setHeader('X-Cache', 'MISS');
-    res.setHeader('X-RateLimit-Remaining', response.headers.get('x-ratelimit-requests-remaining') || '?');
-    res.status(200).json(data);
+    if (!isBDL) {
+      res.setHeader('X-RateLimit-Remaining', response.headers.get('x-ratelimit-requests-remaining') || '?');
+    }
+    res.status(200).json(normalized);
   } catch (err) {
     // Serve stale cache on error
     if (cached) {
