@@ -34,6 +34,8 @@ export default async function handler(req, res) {
   const dateCompact = dateStr.replace(/-/g, '');
   const espnEndpoints = {
     espn_ncaab: `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${dateCompact}&groups=50&limit=200`,
+    espn_nhl: `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?dates=${dateCompact}`,
+    espn_ncaah: `https://site.api.espn.com/apis/site/v2/sports/hockey/mens-college-hockey/scoreboard?dates=${dateCompact}&groups=50&limit=200`,
   };
 
   const isBDL = sport in bdlEndpoints;
