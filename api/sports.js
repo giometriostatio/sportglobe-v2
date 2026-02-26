@@ -36,6 +36,12 @@ export default async function handler(req, res) {
     espn_ncaab: `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${dateCompact}&groups=50&limit=200`,
     espn_nhl: `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?dates=${dateCompact}`,
     espn_ncaah: `https://site.api.espn.com/apis/site/v2/sports/hockey/mens-college-hockey/scoreboard?dates=${dateCompact}&limit=200`,
+    espn_fifa: `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${dateCompact}`,
+    espn_mls: `https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/scoreboard?dates=${dateCompact}`,
+    espn_epl: `https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard?dates=${dateCompact}`,
+    espn_ucl: `https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard?dates=${dateCompact}`,
+    espn_laliga: `https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard?dates=${dateCompact}`,
+    espn_milb: `https://site.api.espn.com/apis/site/v2/sports/baseball/minor-aaa/scoreboard?dates=${dateCompact}&limit=200`,
   };
 
   const isBDL = sport in bdlEndpoints;
