@@ -46,7 +46,7 @@ export default async function handler(req, res) {
 
   // MLB Stats API endpoints (no API key needed)
   const mlbStatsEndpoints = {
-    mlb_milb_aaa: `https://statsapi.mlb.com/api/v1/schedule?sportId=11&date=${dateStr}&hydrate=venue(location)`,
+    mlb_milb_aaa: `https://statsapi.mlb.com/api/v1/schedule?sportId=11,12,13,14,16&date=${dateStr}&hydrate=venue(location)`,
   };
 
   const isMLBStats = sport in mlbStatsEndpoints;
