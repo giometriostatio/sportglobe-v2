@@ -44,12 +44,18 @@ export default async function handler(req, res) {
     espn_milb: `https://site.api.espn.com/apis/site/v2/sports/baseball/minor-aaa/scoreboard?dates=${dateCompact}&limit=200`,
   };
 
+  // MLB Stats API endpoints (no API key needed)
+  const mlbStatsEndpoints = {
+    mlb_milb_aaa: `https://statsapi.mlb.com/api/v1/schedule?sportId=11&date=${dateStr}&hydrate=venue(location)`,
+  };
+
+  const isMLBStats = sport in mlbStatsEndpoints;
   const isBDL = sport in bdlEndpoints;
   const isESPN = sport in espnEndpoints;
-  const url = isESPN ? espnEndpoints[sport] : isBDL ? bdlEndpoints[sport] : endpoints[sport];
+  const url = isMLBStats ? mlbStatsEndpoints[sport] : isESPN ? espnEndpoints[sport] : isBDL ? bdlEndpoints[sport] : endpoints[sport];
   if (!url) return res.status(400).json({ error: 'Invalid sport parameter' });
 
-  if (!isBDL && !isESPN) {
+  if (!isBDL && !isESPN && !isMLBStats) {
     const apiKey = process.env.API_SPORTS_KEY;
     if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
   }
@@ -58,7 +64,7 @@ export default async function handler(req, res) {
   const cacheKey = `${sport}:${dateStr}`;
   const cached = cache[cacheKey];
   const todayStr = new Date().toISOString().split('T')[0];
-  const ttl = isESPN ? CACHE_TTL_STATIC : isBDL ? CACHE_TTL_BDL : (dateStr === todayStr ? CACHE_TTL_LIVE : CACHE_TTL_STATIC);
+  const ttl = isMLBStats ? CACHE_TTL_STATIC : isESPN ? CACHE_TTL_STATIC : isBDL ? CACHE_TTL_BDL : (dateStr === todayStr ? CACHE_TTL_LIVE : CACHE_TTL_STATIC);
   if (cached && (Date.now() - cached.time < ttl)) {
     res.setHeader('X-Cache', 'HIT');
     res.setHeader('X-Cache-Age', Math.round((Date.now() - cached.time) / 1000));
@@ -66,7 +72,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const headers = isESPN
+    const headers = isESPN || isMLBStats
       ? {}
       : isBDL
         ? { 'Authorization': process.env.BALLDONTLIE_KEY }
@@ -76,7 +82,7 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     // Check if rate limited (API-Sports specific)
-    if (!isBDL && !isESPN && data.errors && data.errors.requests) {
+    if (!isBDL && !isESPN && !isMLBStats && data.errors && data.errors.requests) {
       // If we have stale cache, serve it instead of nothing
       if (cached) {
         res.setHeader('X-Cache', 'STALE');
@@ -89,7 +95,9 @@ export default async function handler(req, res) {
     // ESPN returns { events: [...] } — pass events array as response
     // BDL returns { data: [...] } — pass data array as response
     // API-Sports returns { response: [...] }
-    const normalized = isESPN
+    const normalized = isMLBStats
+      ? { response: (data.dates && data.dates[0] && data.dates[0].games) || [] }
+      : isESPN
       ? { response: data.events || [] }
       : isBDL ? { response: data.data || [] } : data;
 
@@ -97,7 +105,7 @@ export default async function handler(req, res) {
     cache[cacheKey] = { data: normalized, time: Date.now() };
 
     res.setHeader('X-Cache', 'MISS');
-    if (!isBDL && !isESPN) {
+    if (!isBDL && !isESPN && !isMLBStats) {
       res.setHeader('X-RateLimit-Remaining', response.headers.get('x-ratelimit-requests-remaining') || '?');
     }
     res.status(200).json(normalized);
