@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Head from 'next/head';
+import { GetServerSideProps } from 'next';
+import { fetchGamesServer } from '@/lib/fetchGames';
 import { Game, SportFilter } from '@/lib/types';
 import { fetchSport } from '@/lib/api';
 import { parseBDLBasketball, parseBDLBaseball, parseESPNCollegeBasketball } from '@/lib/parseGames';
@@ -16,9 +18,18 @@ function getTomorrow(): string {
   return d.toISOString().split('T')[0];
 }
 
-export default function Home() {
-  const [date, setDate] = useState(getTomorrow);
-  const [games, setGames] = useState<Game[]>([]);
+export const getServerSideProps: GetServerSideProps = async () => {
+  try {
+    const { games, date } = await fetchGamesServer();
+    return { props: { initialGames: JSON.parse(JSON.stringify(games)), initialDate: date } };
+  } catch {
+    return { props: { initialGames: [], initialDate: new Date().toISOString().split('T')[0] } };
+  }
+};
+
+export default function Home({ initialGames = [], initialDate }: { initialGames?: Game[]; initialDate?: string }) {
+  const [date, setDate] = useState(initialDate || getTomorrow);
+  const [games, setGames] = useState<Game[]>(initialGames || []);
   const [filter, setFilter] = useState<SportFilter>('all');
   const [tripGames, setTripGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(false);
