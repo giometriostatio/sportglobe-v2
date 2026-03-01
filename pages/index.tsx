@@ -5,7 +5,8 @@ import { GetServerSideProps } from 'next';
 import { fetchGamesServer } from '@/lib/fetchGames';
 import { Game, SportFilter } from '@/lib/types';
 import { fetchSport } from '@/lib/api';
-import { parseBDLBasketball, parseBDLBaseball, parseESPNCollegeBasketball } from '@/lib/parseGames';
+import { parseBDLBasketball, parseBDLBaseball, parseESPNCollegeBasketball, parseESPNGeneric, parseAPISportsGeneric } from '@/lib/parseGames';
+import { SPORT_COLORS } from '@/lib/types';
 import SportFilters from '@/components/SportFilters';
 import DatePicker from '@/components/DatePicker';
 import TripSidebar from '@/components/TripSidebar';
@@ -38,17 +39,39 @@ export default function Home({ initialGames = [], initialDate }: { initialGames?
   const loadGames = useCallback(async (dateStr: string) => {
     setLoading(true);
     try {
-      const [nbaRaw, mlbRaw, ncaabRaw] = await Promise.all([
+      const [nbaRaw, mlbRaw, ncaabRaw, nhlRaw, eplRaw, mlsRaw, uclRaw, laligaRaw, fifaRaw, ncaahRaw, milbRaw, nflRaw, mmaRaw, f1Raw] = await Promise.all([
         fetchSport('bdl_nba', dateStr),
         fetchSport('bdl_mlb', dateStr),
         fetchSport('espn_ncaab', dateStr),
+        fetchSport('espn_nhl', dateStr),
+        fetchSport('espn_epl', dateStr),
+        fetchSport('espn_mls', dateStr),
+        fetchSport('espn_ucl', dateStr),
+        fetchSport('espn_laliga', dateStr),
+        fetchSport('espn_fifa', dateStr),
+        fetchSport('espn_ncaah', dateStr),
+        fetchSport('espn_milb', dateStr),
+        fetchSport('nfl', dateStr),
+        fetchSport('mma', dateStr),
+        fetchSport('f1', dateStr),
       ]);
 
       const nba = parseBDLBasketball(nbaRaw, dateStr);
       const mlb = parseBDLBaseball(mlbRaw, dateStr);
       const ncaab = parseESPNCollegeBasketball(ncaabRaw, dateStr);
+      const nhl = parseESPNGeneric(nhlRaw, 'hockey', 'NHL', SPORT_COLORS.hockey, 300000, dateStr);
+      const epl = parseESPNGeneric(eplRaw, 'soccer', 'EPL', SPORT_COLORS.soccer, 400000, dateStr);
+      const mls = parseESPNGeneric(mlsRaw, 'soccer', 'MLS', SPORT_COLORS.soccer, 410000, dateStr);
+      const ucl = parseESPNGeneric(uclRaw, 'soccer', 'UCL', SPORT_COLORS.soccer, 420000, dateStr);
+      const laliga = parseESPNGeneric(laligaRaw, 'soccer', 'La Liga', SPORT_COLORS.soccer, 430000, dateStr);
+      const fifa = parseESPNGeneric(fifaRaw, 'soccer', 'FIFA', SPORT_COLORS.soccer, 440000, dateStr);
+      const ncaah = parseESPNGeneric(ncaahRaw, 'college_hockey', 'NCAA Hockey', SPORT_COLORS.college_hockey, 500000, dateStr);
+      const milb = parseESPNGeneric(milbRaw, 'minor_baseball', 'MiLB', SPORT_COLORS.minor_baseball, 600000, dateStr);
+      const nfl = parseAPISportsGeneric(nflRaw, 'football', 'NFL', SPORT_COLORS.football, 700000);
+      const mma = parseAPISportsGeneric(mmaRaw, 'mma', 'MMA', SPORT_COLORS.mma, 750000);
+      const f1games = parseAPISportsGeneric(f1Raw, 'f1', 'F1', SPORT_COLORS.f1, 780000);
 
-      setGames([...nba, ...mlb, ...ncaab]);
+      setGames([...nba, ...mlb, ...ncaab, ...nhl, ...epl, ...mls, ...ucl, ...laliga, ...fifa, ...ncaah, ...milb, ...nfl, ...mma, ...f1games]);
     } catch (err) {
       console.error('Failed to load games:', err);
     } finally {

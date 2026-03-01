@@ -148,3 +148,86 @@ export function parseESPNCollegeBasketball(events: any[], targetDate?: string): 
     })
     .filter(Boolean) as Game[];
 }
+
+
+export function parseESPNGeneric(events: any[], sport: string, league: string, color: string, idOffset: number, targetDate?: string): Game[] {
+  return events.map(event => {
+    const comp = event.competitions?.[0];
+    if (!comp) return null;
+
+    const statusName: string = event.status?.type?.name || comp.status?.type?.name || '';
+    if (statusName !== 'STATUS_SCHEDULED') return null;
+
+    const competitors = comp.competitors || [];
+    const homeTeam = competitors.find((c: any) => c.homeAway === 'home');
+    const awayTeam = competitors.find((c: any) => c.homeAway === 'away');
+    const homeName = homeTeam?.team?.displayName || '?';
+    const awayName = awayTeam?.team?.displayName || '?';
+
+    const venueName: string = comp.venue?.fullName || '';
+    const venueCity: string = comp.venue?.address?.city || '';
+    const venueState: string = comp.venue?.address?.state || '';
+    const venueCountry: string = comp.venue?.address?.country || 'USA';
+
+    const utcTime: string = event.date || '';
+    const { dateET, timeET } = convertToEastern(utcTime);
+    if (targetDate && dateET !== targetDate) return null;
+
+    const coords = geocodeCityState(venueCity, venueState)
+      || geocode(venueName || null, venueCity || null, venueCountry, homeName);
+    if (!coords) return null;
+
+    const eventId = parseInt(event.id, 10) || 0;
+
+    return {
+      id: eventId + idOffset,
+      sport: sport as Sport,
+      league,
+      home: homeName,
+      away: awayName,
+      venue: venueName,
+      city: venueCity,
+      country: venueCountry,
+      lat: coords[0],
+      lng: coords[1],
+      status: 'UPCOMING' as const,
+      detail: 'Scheduled',
+      startTime: timeET,
+      color,
+      dateUTC: utcTime,
+    } as Game;
+  }).filter(Boolean) as Game[];
+}
+
+export function parseAPISportsGeneric(games: any[], sport: string, league: string, color: string, idOffset: number): Game[] {
+  return games.map((g: any) => {
+    const homeName = g.teams?.home?.name || '?';
+    const awayName = g.teams?.away?.name || '?';
+    const venue = g.league?.name || '';
+    const country = g.league?.country || '';
+
+    const coords = geocode(null, null, country, homeName);
+    if (!coords) return null;
+
+    const utcTime = g.date || (g.timestamp ? new Date(g.timestamp * 1000).toISOString() : '');
+    const { timeET } = convertToEastern(utcTime);
+
+    return {
+      id: (g.id || Math.floor(Math.random() * 999999)) + idOffset,
+      sport: sport as Sport,
+      league,
+      home: homeName,
+      away: awayName,
+      venue,
+      city: '',
+      country,
+      lat: coords[0],
+      lng: coords[1],
+      status: 'UPCOMING' as const,
+      detail: 'Scheduled',
+      startTime: timeET,
+      color,
+      dateUTC: utcTime,
+    } as Game;
+  }).filter(Boolean) as Game[];
+}
